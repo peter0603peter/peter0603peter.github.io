@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>預約系統</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+        /* 新增的時間顯示樣式 */
+        .clock {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- 系統時間顯示 -->
+    <div class="clock" id="clock"></div>
+
+    <div class="container">
+        <h1>預約系統</h1>
+        
+        <!-- 同事介面 -->
+        <div class="section" id="colleague-section">
+            <h2>同事預約</h2>
+            <p>目前號碼：<span id="current-number">0</span></p>
+            <form id="case-form">
+                <label for="case-title">案件主旨:</label><br>
+                <input type="text" id="case-title" name="case-title" required><br><br>
+                <button type="submit">預約並取得號碼</button>
+            </form>
+            <p id="case-number" class="hidden"></p>
+        </div>
+
+        <!-- 主管登入介面 -->
+        <div class="section" id="supervisor-login">
+            <h2>主管登入</h2>
+            <form id="login-form">
+                <label for="password">請輸入密碼:</label><br>
+                <input type="password" id="password" name="password" required><br><br>
+                <button type="submit">登入</button>
+            </form>
+            <p id="login-error" class="hidden" style="color:red;">密碼錯誤，請再試一次</p>
+        </div>
+
+        <!-- 主管介面 -->
+        <div class="section hidden" id="supervisor-section">
+            <h2>主管操作</h2>
+            <button onclick="showCases()">查看所有案件</button>
+            <button onclick="callNext()">依序叫號</button>
+
+            <div id="case-list" class="hidden">
+                <h3>案件列表</h3>
+                <ul id="cases"></ul>
+            </div>
+            <p id="called-number" class="hidden"></p>
+        </div>
+    </div>
+
+    <script>
+        let currentNumber = 0;
+        let cases = [];
+        const supervisorPassword = 'supervisor123'; // 主管密碼
+        let nextNumberToAssign = 1; // 同事將取得的號碼
+
+        // 更新系統時間
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = `系統時間: ${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000); // 每秒更新一次時間
+        updateClock(); // 頁面加載時立即顯示時間
+
+        // 提交案件，將案件添加到列表中，並告知同事他的號碼
+        document.getElementById('case-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const caseTitle = document.getElementById('case-title').value;
+            cases.push({ title: caseTitle, number: nextNumberToAssign });
+            document.getElementById('case-number').innerText = `您取得的號碼是: ${nextNumberToAssign}`;
+            document.getElementById('case-number').classList.remove('hidden');
+            nextNumberToAssign++; // 下一個同事將取得的號碼遞增
+        });
+
+        // 主管登入
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const inputPassword = document.getElementById('password').value;
+            if (inputPassword === supervisorPassword) {
+                document.getElementById('supervisor-section').classList.remove('hidden');
+                document.getElementById('supervisor-login').classList.add('hidden');
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        });
+
+        // 顯示案件列表
+        function showCases() {
+            const caseList = document.getElementById('cases');
+            caseList.innerHTML = '';
+            cases.forEach(c => {
+                const listItem = document.createElement('li');
+                listItem.innerText = `號碼 ${c.number}: ${c.title}`;
+                listItem.onclick = function() {
+                    callCase(c.number);
+                };
+                caseList.appendChild(listItem);
+            });
+            document.getElementById('case-list').classList.remove('hidden');
+        }
+
+        // 依序叫號
+        function callNext() {
+            if (cases.length > 0) {
+                const nextCase = cases.shift(); // 取出下一個案件
+                currentNumber = nextCase.number; // 更新當前號碼
+                document.getElementById('current-number').innerText = currentNumber; // 顯示當前號碼
+                document.getElementById('called-number').innerText = `叫號: ${currentNumber}`;
+                document.getElementById('called-number').classList.remove('hidden');
+                
+                // 彈出提示，顯示叫到的號碼
+                alert(`目前叫號: ${currentNumber}`);
+                
+                showCases(); // 更新案件列表
+            } else {
+                alert('沒有待處理的案件');
+            }
+        }
+
+        // 叫號處理
+        function callCase(number) {
+            document.getElementById('called-number').innerText = `叫號: ${number}`;
+            document.getElementById('called-number').classList.remove('hidden');
+        }
+
+        // 每日重置號碼
+        setInterval(function() {
+            const now = new Date();
+            if (now.getHours() === 0 && now.getMinutes() === 0) {
+                currentNumber = 0;
+                nextNumberToAssign = 1;
+                cases = [];
+                document.getElementById('current-number').innerText = currentNumber;
+                document.getElementById('case-list').classList.add('hidden');
+                document.getElementById('called-number').classList.add('hidden');
+            }
+        }, 60000); // 每分鐘檢查一次是否到了午夜
+    </script>
+</body>
+</html>
